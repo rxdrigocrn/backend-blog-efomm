@@ -47,3 +47,14 @@ model Post {
   autorId   String
   autor     User     @relation(fields: [autorId], references: [id])
 }
+
+model Management {
+  id          String   @id @default(uuid())
+  nome        String
+  cargo       String
+  descricao   String?  // Ex: "3º ano de Náutica"
+  photoUrl    String?
+  order       Int      @default(0) // Para controlar quem aparece primeiro
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
