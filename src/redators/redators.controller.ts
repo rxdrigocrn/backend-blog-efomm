@@ -1,6 +1,6 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Req } from '@nestjs/common';
 import { RedatoresService } from './redators.service';
-import { CreateRedatorDto } from './dto/create-redator.dto';
+import {  CreateUserDto } from './dto/create-redator.dto';
 import { UpdateRedatorDto } from './dto/update-redator.dto';
 import { UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -12,33 +12,30 @@ import { Query } from '@nestjs/common';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('PRESIDENTE')
 export class RedatoresController {
-  constructor(private service: RedatoresService) {}
+  constructor(private redatoresService: RedatoresService) {}
 
   @Post()
-  create(@Body() dto: CreateRedatorDto) {
-    return this.service.create(dto)
+  create(@Body() dto: CreateUserDto, @Req() req) {
+    return this.redatoresService.create(dto, req.user.role);
   }
 
-  @Get()
-  findAll(@Query('search') search?: string) {
-    return this.service.findAll(search)
-  }
+ @Get()
+findAll(@Query('search') search: string, @Req() req) {
+  return this.redatoresService.findAll(search, req.user.userId);
+}
 
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.service.findOne(id)
+    return this.redatoresService.findOne(id);
   }
 
   @Patch(':id')
-  update(
-    @Param('id') id: string,
-    @Body() dto: UpdateRedatorDto,
-  ) {
-    return this.service.update(id, dto)
+  update(@Param('id') id: string, @Body() dto: UpdateRedatorDto) {
+    return this.redatoresService.update(id, dto);
   }
 
   @Delete(':id')
   remove(@Param('id') id: string) {
-    return this.service.remove(id)
+    return this.redatoresService.remove(id);
   }
 }

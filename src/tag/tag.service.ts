@@ -22,17 +22,21 @@ export class TagService {
     });
   }
 
-  async delete(id: string) {
-    const inUse = await this.prisma.profile.count({
-      where: { tagId: id },
-    });
+ async delete(id: string) {
+  const inUse = await this.prisma.user.count({
+    where: {
+      tags: {
+        some: { id } // 🔥 "some" verifica se a tag está na lista de qualquer usuário
+      },
+    },
+  });
 
-    if (inUse > 0) {
-      throw new BadRequestException('Tag já está sendo utilizada');
-    }
-
-    return this.prisma.tag.delete({
-      where: { id },
-    });
+  if (inUse > 0) {
+    throw new BadRequestException('Esta tag está vinculada a usuários e não pode ser excluída.');
   }
+
+  return this.prisma.tag.delete({
+    where: { id },
+  });
+}
 }

@@ -1,48 +1,136 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { Role } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { CreateUserDto } from './dto/create-profile.dto';
+import { UpdateUserDto } from './dto/update-profile.dto';
 
 @Injectable()
-export class ProfileService {
+export class UserService {
   constructor(private prisma: PrismaService) {}
 
-  create(data: {
-    name: string;
-    bio: string;
-    imageUrl: string;
-    tagId: string;
-  }) {
-    return this.prisma.profile.create({
-      data,
-      include: { tag: true },
-    });
+  private formatAvatarUrl(user: any) {
+    if (!user) return user;
+    let newAvatarUrl = user.avatarUrl;
+
+    if (newAvatarUrl && !newAvatarUrl.startsWith('http')) {
+      const baseUrl = process.env.BACKEND_URL || 'http://localhost:5000/api';
+      const cleanBaseUrl = baseUrl.replace(/\/$/, '');
+      const cleanPath = newAvatarUrl.startsWith('/') ? newAvatarUrl : `/${newAvatarUrl}`;
+      newAvatarUrl = `${cleanBaseUrl}${cleanPath}`;
+    }
+
+    return { ...user, avatarUrl: newAvatarUrl };
   }
 
-  findAll() {
-    return this.prisma.profile.findMany({
-      include: { tag: true },
-      orderBy: { createdAt: 'desc' },
+  async create(data: CreateUserDto) {
+    const { tagIds, password, ...rest } = data;
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    const user = await this.prisma.user.create({
+      data: {
+        ...rest,
+        password: passwordHash,
+        role: data.role ?? Role.REDATOR,
+        tags: tagIds ? {
+          connect: tagIds.map(id => ({ id }))
+        } : undefined,
+      },
+      select: { // Use select ou include, aqui mantive o select para ser consistente
+        id: true,
+        email: true,
+        nome: true,
+        bio: true,
+        avatarUrl: true,
+        role: true,
+        tags: { select: { id: true, name: true } }, // 🔥 Ajustado para plural
+      },
     });
+
+    return this.formatAvatarUrl(user);
   }
 
-  update(
-    id: string,
-    data: {
-      name?: string;
-      bio?: string;
-      imageUrl?: string;
-      tagId?: string;
-    },
-  ) {
-    return this.prisma.profile.update({
+  async findAll() {
+    const users = await this.prisma.user.findMany({
+      select: {
+        id: true,
+        email: true,
+        nome: true,
+        bio: true,
+        avatarUrl: true,
+        role: true,
+        tags: { select: { id: true, name: true } }, // 🔥 Ajustado para plural
+      },
+      orderBy: { nome: 'asc' },
+    });
+
+    return users.map(user => this.formatAvatarUrl(user));
+  }
+
+  async findOne(id: string) {
+    const user = await this.prisma.user.findUnique({
       where: { id },
-      data,
-      include: { tag: true },
+      select: {
+        id: true,
+        email: true,
+        nome: true,
+        bio: true,
+        avatarUrl: true,
+        role: true,
+        tags: { select: { id: true, name: true } }, // 🔥 Ajustado para plural
+      },
     });
+
+    if (!user) throw new NotFoundException('Usuario nao encontrado');
+    return this.formatAvatarUrl(user);
   }
 
-  delete(id: string) {
-    return this.prisma.profile.delete({
+  async update(id: string, data: any) {
+    await this.findOne(id);
+    const { tagIds, password, ...rest } = data;
+
+    const updateData: any = { ...rest };
+    if (password) updateData.password = await bcrypt.hash(password, 10);
+
+    if (tagIds) {
+      updateData.tags = {
+        set: tagIds.map(id => ({ id }))
+      };
+    }
+
+    const updatedUser = await this.prisma.user.update({
       where: { id },
+      data: updateData,
+      select: {
+        id: true,
+        email: true,
+        nome: true,
+        bio: true,
+        avatarUrl: true,
+        role: true,
+        tags: { select: { id: true, name: true } }, // 🔥 Ajustado para plural
+      },
     });
+
+    return this.formatAvatarUrl(updatedUser);
+  }
+
+  async delete(id: string) {
+    await this.findOne(id);
+
+    const deletedUser = await this.prisma.user.delete({
+      where: { id },
+      select: {
+        id: true,
+        email: true,
+        nome: true,
+        bio: true,
+        avatarUrl: true,
+        role: true,
+        tags: { select: { id: true, name: true } }, // 🔥 Ajustado para plural
+      },
+    });
+
+    return this.formatAvatarUrl(deletedUser);
   }
 }

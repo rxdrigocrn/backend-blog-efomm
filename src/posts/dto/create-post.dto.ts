@@ -1,4 +1,5 @@
 import { IsString, IsNotEmpty, IsOptional, IsBoolean } from 'class-validator';
+import { Transform } from 'class-transformer';
 
 export class CreatePostDto {
   @IsString()
@@ -9,11 +10,12 @@ export class CreatePostDto {
   @IsNotEmpty()
   conteudo: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  imagemUrl: string;
+  imagemUrl?: string;
 
   @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true)
   @IsBoolean()
   publicado?: boolean;
 }

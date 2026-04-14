@@ -3,8 +3,9 @@ import { TagService } from './tag.service';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { Role } from '@prisma/client';
+import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 
-@UseGuards(RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard) // 🔥 A ORDEM IMPORTA: JWT primeiro, depois Roles
 @Controller('tags')
 export class TagController {
   constructor(private readonly service: TagService) {}

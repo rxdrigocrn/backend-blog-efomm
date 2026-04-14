@@ -1,22 +1,26 @@
-import { IsEmail, IsString, MinLength, IsOptional } from 'class-validator'
+import { IsEmail, IsString, MinLength, IsOptional, IsEnum } from 'class-validator';
+import { Role } from '@prisma/client';
 
-export class CreateRedatorDto {
-
+export class CreateUserDto {
   @IsEmail()
-  email: string
+  email: string;
 
   @IsString()
-  nome: string
+  nome: string;
 
   @IsString()
   @MinLength(6)
-  password: string
+  password: string;
 
   @IsOptional()
   @IsString()
-  bio?: string
+  bio?: string;
 
   @IsOptional()
   @IsString()
-  avatarUrl?: string
+  avatarUrl?: string;
+
+  @IsOptional()
+  @IsEnum(Role)
+  role?: Role; // 🔥 NOVO
 }
