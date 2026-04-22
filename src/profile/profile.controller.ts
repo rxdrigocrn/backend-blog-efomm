@@ -8,7 +8,8 @@ import {
   Param, 
   UseGuards, 
   UseInterceptors,
-  UploadedFile
+  UploadedFile,
+  Req
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
@@ -76,8 +77,7 @@ export class UserController {
 
   // 🔥 Rota Protegida: Somente Presidente edita (ou o próprio usuário, se você implementar a lógica)
   @Patch(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.PRESIDENTE)
+  @UseGuards(JwtAuthGuard)
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorage(),
@@ -87,7 +87,8 @@ export class UserController {
   async update(
     @Param('id') id: string, 
     @UploadedFile() file: Express.Multer.File,
-    @Body() body: UpdateUserDto
+    @Body() body: UpdateUserDto,
+    @Req() req
   ) {
     let avatarUrl = body.avatarUrl;
 
@@ -108,7 +109,7 @@ export class UserController {
     const updateData = { ...body };
     if (avatarUrl) updateData.avatarUrl = avatarUrl;
 
-    return this.service.update(id, updateData);
+    return this.service.update(id, updateData, req.user.userId, req.user.role);
   }
 
   // 🔥 Rota Protegida: Somente Presidente deleta

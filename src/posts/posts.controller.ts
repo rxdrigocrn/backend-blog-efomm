@@ -10,10 +10,10 @@ import {
   Req,
   Query,
   UseInterceptors,
-  UploadedFile,
+  UploadedFiles,
   BadRequestException,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { v4 as uuid } from 'uuid';
 import sharp from 'sharp';
@@ -58,40 +58,50 @@ export class PostsController {
   @UseGuards(JwtAuthGuard)
   @Post()
   @UseInterceptors(
-    FileInterceptor('file', {
+    FileFieldsInterceptor([
+      { name: 'file', maxCount: 1 },
+      { name: 'files', maxCount: 10 },
+    ], {
       storage: memoryStorage(),
       limits: { fileSize: 2 * 1024 * 1024 }, // 2MB
     }),
   )
   async create(
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFiles()
+    files: {
+      file?: Express.Multer.File[];
+      files?: Express.Multer.File[];
+    },
     @Body() dto: CreatePostDto,
     @Req() req,
   ) {
-    let imageUrl = dto.imagemUrl;
-    const uploadPath = path.resolve('uploads');
-    
-    if (!fs.existsSync(uploadPath)) fs.mkdirSync(uploadPath);
+    let imageUrls = this.normalizeImageUrls(dto.imagemUrls);
+    if (dto.imagemUrl) imageUrls.push(dto.imagemUrl);
 
-    if (file) {
-      const filename = `${uuid()}.webp`;
-      await sharp(file.buffer)
-        .resize({ width: 800 })
-        .webp({ quality: 70 })
-        .toFile(path.join(uploadPath, filename));
-
-      imageUrl = `/uploads/${filename}`;
+    const uploadedFiles = this.getUploadedFiles(files);
+    if (uploadedFiles.length > 0) {
+      const uploadedImageUrls = await Promise.all(
+        uploadedFiles.map(file => this.saveImage(file)),
+      );
+      imageUrls = [...imageUrls, ...uploadedImageUrls];
     }
 
-    if (!imageUrl) {
-      throw new BadRequestException('Envie uma imagem (file ou URL)');
+    imageUrls = this.normalizeImageUrls(imageUrls);
+
+    if (!imageUrls.length) {
+      throw new BadRequestException('Envie pelo menos uma imagem (file/files ou URL)');
     }
 
     // Como o FormData envia booleanos como string ('true' ou 'false'), fazemos o parse
     const isPublicado = String(dto.publicado) === 'true';
 
     return this.postsService.create(
-      { ...dto, imagemUrl: imageUrl, publicado: isPublicado },
+      {
+        ...dto,
+        imagemUrl: imageUrls[0],
+        imagemUrls: imageUrls,
+        publicado: isPublicado,
+      },
       req.user.userId,
     );
   }
@@ -100,36 +110,47 @@ export class PostsController {
   @UseGuards(JwtAuthGuard)
   @Patch(':id')
   @UseInterceptors(
-    FileInterceptor('file', {
+    FileFieldsInterceptor([
+      { name: 'file', maxCount: 1 },
+      { name: 'files', maxCount: 10 },
+    ], {
       storage: memoryStorage(),
       limits: { fileSize: 2 * 1024 * 1024 },
     }),
   )
   async update(
     @Param('id') id: string,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFiles()
+    files: {
+      file?: Express.Multer.File[];
+      files?: Express.Multer.File[];
+    },
     @Body() dto: UpdatePostDto,
     @Req() req,
   ) {
-    let imageUrl = dto.imagemUrl;
-    
-    // Se o usuário mandou uma foto nova no frontend, processamos e substituímos
-    if (file) {
-      const uploadPath = path.resolve('uploads');
-      if (!fs.existsSync(uploadPath)) fs.mkdirSync(uploadPath);
-
-      const filename = `${uuid()}.webp`;
-      await sharp(file.buffer)
-        .resize({ width: 800 })
-        .webp({ quality: 70 })
-        .toFile(path.join(uploadPath, filename));
-
-      imageUrl = `/uploads/${filename}`;
-    }
-
-    // Tratamento seguro dos dados do Update
     const updateData = { ...dto };
-    if (imageUrl) updateData.imagemUrl = imageUrl;
+
+    const uploadedFiles = this.getUploadedFiles(files);
+    const hasImageUpdate =
+      dto.imagemUrl !== undefined ||
+      dto.imagemUrls !== undefined ||
+      uploadedFiles.length > 0;
+
+    if (hasImageUpdate) {
+      let imageUrls = this.normalizeImageUrls(dto.imagemUrls);
+      if (dto.imagemUrl) imageUrls.push(dto.imagemUrl);
+
+      if (uploadedFiles.length > 0) {
+        const uploadedImageUrls = await Promise.all(
+          uploadedFiles.map(file => this.saveImage(file)),
+        );
+        imageUrls = [...imageUrls, ...uploadedImageUrls];
+      }
+
+      imageUrls = this.normalizeImageUrls(imageUrls);
+      updateData.imagemUrls = imageUrls;
+      updateData.imagemUrl = imageUrls[0] || '';
+    }
     
     // Converte string para boolean se vier via FormData
     if (dto.publicado !== undefined) {
@@ -153,5 +174,37 @@ export class PostsController {
       req.user.userId,
       req.user.role,
     );
+  }
+
+  private getUploadedFiles(files: {
+    file?: Express.Multer.File[];
+    files?: Express.Multer.File[];
+  }): Express.Multer.File[] {
+    return [...(files?.file || []), ...(files?.files || [])];
+  }
+
+  private normalizeImageUrls(urls?: string[]): string[] {
+    if (!urls || !Array.isArray(urls)) return [];
+
+    return Array.from(
+      new Set(
+        urls
+          .map(url => String(url).trim())
+          .filter(Boolean),
+      ),
+    );
+  }
+
+  private async saveImage(file: Express.Multer.File) {
+    const uploadPath = path.resolve('uploads');
+    if (!fs.existsSync(uploadPath)) fs.mkdirSync(uploadPath);
+
+    const filename = `${uuid()}.webp`;
+    await sharp(file.buffer)
+      .resize({ width: 800 })
+      .webp({ quality: 70 })
+      .toFile(path.join(uploadPath, filename));
+
+    return `/uploads/${filename}`;
   }
 }

@@ -23,16 +23,25 @@ export class TagService {
   }
 
  async delete(id: string) {
-  const inUse = await this.prisma.user.count({
-    where: {
-      tags: {
-        some: { id } // 🔥 "some" verifica se a tag está na lista de qualquer usuário
+  const [inUseByUsers, inUseByPosts] = await this.prisma.$transaction([
+    this.prisma.user.count({
+      where: {
+        tags: {
+          some: { id } // 🔥 "some" verifica se a tag está na lista de qualquer usuário
+        },
       },
-    },
-  });
+    }),
+    this.prisma.post.count({
+      where: {
+        tags: {
+          some: { id }
+        },
+      },
+    }),
+  ]);
 
-  if (inUse > 0) {
-    throw new BadRequestException('Esta tag está vinculada a usuários e não pode ser excluída.');
+  if (inUseByUsers > 0 || inUseByPosts > 0) {
+    throw new BadRequestException('Esta tag está vinculada a usuários ou posts e não pode ser excluída.');
   }
 
   return this.prisma.tag.delete({

@@ -8,7 +8,10 @@ export class ManagementService {
   private formatPhotoUrl(member: any) {
     if (member?.photoUrl && !member.photoUrl.startsWith('http')) {
       const baseUrl = process.env.BACKEND_URL || 'http://localhost:5000';
-      member.photoUrl = `${baseUrl.replace(/\/$/, '')}${member.photoUrl.startsWith('/') ? '' : '/'}${member.photoUrl}`;
+      const normalizedPath = member.photoUrl.startsWith('/uploads')
+        ? `/api${member.photoUrl}`
+        : member.photoUrl;
+      member.photoUrl = `${baseUrl.replace(/\/$/, '')}${normalizedPath.startsWith('/') ? '' : '/'}${normalizedPath}`;
     }
     return member;
   }

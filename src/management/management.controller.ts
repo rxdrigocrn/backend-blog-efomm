@@ -37,7 +37,12 @@ export class ManagementController {
       photoUrl = await this.saveImage(file);
     }
 
-    return this.service.create({ ...body, photoUrl, order: Number(body.order || 0) });
+    return this.service.create({
+      ...body,
+      photoUrl,
+      isManagement: this.parseBoolean(body.isManagement),
+      isSobre: this.parseBoolean(body.isSobre),
+    });
   }
 
   // 🔥 Rota Protegida para Editar
@@ -55,7 +60,12 @@ export class ManagementController {
 
     const updateData = { ...body };
     if (photoUrl) updateData.photoUrl = photoUrl;
-    if (body.order !== undefined) updateData.order = Number(body.order);
+    if (body.isManagement !== undefined) {
+      updateData.isManagement = this.parseBoolean(body.isManagement);
+    }
+    if (body.isSobre !== undefined) {
+      updateData.isSobre = this.parseBoolean(body.isSobre);
+    }
 
     return this.service.update(id, updateData);
   }
@@ -79,5 +89,15 @@ export class ManagementController {
       .toFile(path.join(uploadPath, filename));
 
     return `/uploads/${filename}`;
+  }
+
+  private parseBoolean(value: unknown): boolean {
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'number') return value === 1;
+    if (typeof value === 'string') {
+      const normalized = value.trim().toLowerCase();
+      return normalized === 'true' || normalized === '1';
+    }
+    return false;
   }
 }

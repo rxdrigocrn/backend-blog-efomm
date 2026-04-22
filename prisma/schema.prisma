@@ -18,7 +18,8 @@ model Tag {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users     User[]   // Uma tag pode pertencer a vários usuários
+  users     User[]
+  posts     Post[]
 }
 
 model User {
@@ -40,21 +41,25 @@ model Post {
   slug      String   @unique
   conteudo  String   @db.Text
   imagemUrl String
+  imagemUrls String[] @default([])
   publicado Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   
   autorId   String
   autor     User     @relation(fields: [autorId], references: [id])
+  tags      Tag[]
 }
 
 model Management {
   id          String   @id @default(uuid())
   nome        String
   cargo       String
-  descricao   String?  // Ex: "3º ano de Náutica"
+  descricao   String? 
   photoUrl    String?
-  order       Int      @default(0) // Para controlar quem aparece primeiro
+  order       Int      @default(0) 
+  isManagement Boolean @default(false)
+  isSobre Boolean @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }

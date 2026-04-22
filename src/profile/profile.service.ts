@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -85,14 +85,23 @@ export class UserService {
     return this.formatAvatarUrl(user);
   }
 
-  async update(id: string, data: any) {
+  async update(id: string, data: any, currentUserId: string, currentUserRole: Role) {
     await this.findOne(id);
+
+    if (currentUserRole !== Role.PRESIDENTE && currentUserId !== id) {
+      throw new ForbiddenException('Sem permissão para editar este usuário');
+    }
+
     const { tagIds, password, ...rest } = data;
 
     const updateData: any = { ...rest };
     if (password) updateData.password = await bcrypt.hash(password, 10);
 
-    if (tagIds) {
+    if (currentUserRole !== Role.PRESIDENTE) {
+      delete updateData.role;
+    }
+
+    if (tagIds && currentUserRole === Role.PRESIDENTE) {
       updateData.tags = {
         set: tagIds.map(id => ({ id }))
       };

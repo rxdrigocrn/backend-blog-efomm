@@ -27,9 +27,17 @@ export class PostsService {
   private formatPostData(post: any) {
     if (!post) return post;
 
+    const rawImageUrls = Array.isArray(post.imagemUrls)
+      ? post.imagemUrls
+      : post.imagemUrl
+        ? [post.imagemUrl]
+        : [];
+    const imagemUrls = rawImageUrls.map((url: string) => this.formatUrl(url));
+
     const formattedPost = {
       ...post,
-      imagemUrl: this.formatUrl(post.imagemUrl),
+      imagemUrls,
+      imagemUrl: imagemUrls[0] || this.formatUrl(post.imagemUrl),
     };
 
     // Se o post trouxer os dados do autor e ele tiver um avatar, formata também!
@@ -66,6 +74,9 @@ export class PostsService {
         skip,
         take: limit,
         include: {
+          tags: {
+            select: { id: true, name: true },
+          },
           autor: {
             select: { nome: true, avatarUrl: true },
           },
@@ -96,6 +107,9 @@ export class PostsService {
         publicado: true,
       },
       include: {
+        tags: {
+          select: { id: true, name: true },
+        },
         autor: true,
       },
     });
@@ -136,6 +150,9 @@ export class PostsService {
         skip,
         take: limit,
         include: {
+          tags: {
+            select: { id: true, name: true },
+          },
           autor: {
             select: { nome: true, avatarUrl: true },
           },
@@ -162,16 +179,28 @@ export class PostsService {
       .toLowerCase()
       .replace(/ /g, '-');
 
+    const imageUrls = this.resolveImageUrls(createPostDto);
+    const tagIds = this.resolveTagIds(createPostDto.tagIds ?? createPostDto.tags);
+
     const post = await this.prisma.post.create({
       data: {
         titulo: createPostDto.titulo,
         conteudo: createPostDto.conteudo,
         publicado: createPostDto.publicado ?? true,
-        imagemUrl: createPostDto.imagemUrl || "",
+        imagemUrl: imageUrls[0] || '',
+        imagemUrls: imageUrls,
+        tags: tagIds.length
+          ? {
+              connect: tagIds.map(id => ({ id })),
+            }
+          : undefined,
         slug,
         autorId: userId,
-      },
+      } as any,
       include: {
+        tags: {
+          select: { id: true, name: true },
+        },
         autor: {
           select: { nome: true, avatarUrl: true },
         },
@@ -192,10 +221,27 @@ export class PostsService {
       throw new ForbiddenException('Sem permissão para editar');
     }
 
+    const dataToUpdate: any = { ...dto };
+    if (dto.imagemUrl !== undefined || dto.imagemUrls !== undefined) {
+      const imageUrls = this.resolveImageUrls(dto);
+      dataToUpdate.imagemUrls = imageUrls;
+      dataToUpdate.imagemUrl = imageUrls[0] || '';
+    }
+
+    if (dto.tagIds !== undefined || dto.tags !== undefined) {
+      const tagIds = this.resolveTagIds(dto.tagIds ?? dto.tags);
+      dataToUpdate.tags = {
+        set: tagIds.map(id => ({ id })),
+      };
+    }
+
     const updatedPost = await this.prisma.post.update({
       where: { id },
-      data: dto,
+      data: dataToUpdate,
       include: {
+        tags: {
+          select: { id: true, name: true },
+        },
         autor: {
           select: { nome: true, avatarUrl: true },
         },
@@ -219,10 +265,40 @@ export class PostsService {
     return this.prisma.post.delete({
       where: { id },
       include: {
+        tags: {
+          select: { id: true, name: true },
+        },
         autor: {
           select: { nome: true, avatarUrl: true },
         },
       },
     });
+  }
+
+  private resolveImageUrls(dto: CreatePostDto | UpdatePostDto): string[] {
+    const imageUrlsFromArray = Array.isArray(dto.imagemUrls)
+      ? dto.imagemUrls
+      : [];
+    const imageUrls = imageUrlsFromArray
+      .map(url => String(url).trim())
+      .filter(Boolean);
+
+    if (!imageUrls.length && dto.imagemUrl) {
+      imageUrls.push(String(dto.imagemUrl).trim());
+    }
+
+    return Array.from(new Set(imageUrls));
+  }
+
+  private resolveTagIds(tagIds?: string[]): string[] {
+    if (!Array.isArray(tagIds)) return [];
+
+    return Array.from(
+      new Set(
+        tagIds
+          .map(id => String(id).trim())
+          .filter(Boolean),
+      ),
+    );
   }
 }
