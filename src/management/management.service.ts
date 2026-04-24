@@ -5,38 +5,35 @@ import { PrismaService } from 'src/prisma/prisma.service';
 export class ManagementService {
   constructor(private prisma: PrismaService) {}
 
+  /* LÓGICA ANTIGA COMENTADA
   private formatPhotoUrl(member: any) {
     if (member?.photoUrl && !member.photoUrl.startsWith('http')) {
       const baseUrl = process.env.BACKEND_URL || 'http://localhost:5000';
-      const normalizedPath = member.photoUrl.startsWith('/uploads')
-        ? `/api${member.photoUrl}`
-        : member.photoUrl;
+      const normalizedPath = member.photoUrl.startsWith('/uploads') ? `/api${member.photoUrl}` : member.photoUrl;
       member.photoUrl = `${baseUrl.replace(/\/$/, '')}${normalizedPath.startsWith('/') ? '' : '/'}${normalizedPath}`;
     }
     return member;
   }
+  */
 
   async create(data: any) {
-    const member = await this.prisma.management.create({ data });
-    return this.formatPhotoUrl(member);
+    return this.prisma.management.create({ data });
   }
 
   async findAll() {
-    const members = await this.prisma.management.findMany({
+    return this.prisma.management.findMany({
       orderBy: { order: 'asc' },
     });
-    return members.map(m => this.formatPhotoUrl(m));
   }
 
   async update(id: string, data: any) {
     try {
-      const member = await this.prisma.management.update({
+      return await this.prisma.management.update({
         where: { id },
         data,
       });
-      return this.formatPhotoUrl(member);
     } catch {
-      throw new NotFoundException('Membro da gerência não encontrado');
+      throw new NotFoundException('Membro não encontrado');
     }
   }
 

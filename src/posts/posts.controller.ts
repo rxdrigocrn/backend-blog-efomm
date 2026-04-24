@@ -15,35 +15,34 @@ import {
 } from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
-import { v4 as uuid } from 'uuid';
-import sharp from 'sharp';
-import * as fs from 'fs';
-import * as path from 'path';
+// import { v4 as uuid } from 'uuid'; // Comentado (Blob cuida do nome ou UploadService)
+// import sharp from 'sharp'; // Comentado (Processamento pode ser feito no UploadService se quiser)
+// import * as fs from 'fs'; // Comentado
+// import * as path from 'path'; // Comentado
 
 import { PostsService } from './posts.service';
 import { CreatePostDto, UpdatePostDto } from './dto/create-post.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { FindPostsDto } from './dto/find-posts.dto';
+import { UploadService } from '../upload/upload.service'; // 🔥 Importe seu novo service
 
 @Controller('posts')
 export class PostsController {
-  constructor(private readonly postsService: PostsService) {}
+  constructor(
+    private readonly postsService: PostsService,
+    private readonly uploadService: UploadService, // 🔥 Injetado
+  ) {}
 
-  // 🌍 1. ROTA PÚBLICA (PORTAL DE NOTÍCIAS)
-  // Não usa JwtAuthGuard. Acessível para qualquer visitante.
   @Get('public')
   findAllPublic(@Query() filters: FindPostsDto) {
     return this.postsService.findAllPublic(filters);
   }
 
-  // 🌍 1.5. ROTA PÚBLICA (BUSCAR UMA NOTÍCIA ESPECÍFICA POR ID)
-  // IMPORTANTE: Essa rota também não usa JwtAuthGuard
   @Get('public/:id')
   findOnePublic(@Param('id') id: string) {
     return this.postsService.findOnePublic(id);
   }
 
-  // 🔒 2. ROTA PRIVADA (DASHBOARD)
   @Get()
   @UseGuards(JwtAuthGuard)
   findAll(@Query() filters: FindPostsDto, @Req() req) {
@@ -54,7 +53,6 @@ export class PostsController {
     );
   }
 
-  // 📌 CRIAR POST
   @UseGuards(JwtAuthGuard)
   @Post()
   @UseInterceptors(
@@ -63,7 +61,7 @@ export class PostsController {
       { name: 'files', maxCount: 10 },
     ], {
       storage: memoryStorage(),
-      limits: { fileSize: 2 * 1024 * 1024 }, // 2MB
+      limits: { fileSize: 5 * 1024 * 1024 }, // Aumentei para 5MB já que o Blob aguenta bem
     }),
   )
   async create(
@@ -79,9 +77,11 @@ export class PostsController {
     if (dto.imagemUrl) imageUrls.push(dto.imagemUrl);
 
     const uploadedFiles = this.getUploadedFiles(files);
+    
     if (uploadedFiles.length > 0) {
+      // 🔥 Agora usa o Vercel Blob via UploadService
       const uploadedImageUrls = await Promise.all(
-        uploadedFiles.map(file => this.saveImage(file)),
+        uploadedFiles.map(file => this.uploadService.uploadFile(file, 'posts')),
       );
       imageUrls = [...imageUrls, ...uploadedImageUrls];
     }
@@ -92,7 +92,6 @@ export class PostsController {
       throw new BadRequestException('Envie pelo menos uma imagem (file/files ou URL)');
     }
 
-    // Como o FormData envia booleanos como string ('true' ou 'false'), fazemos o parse
     const isPublicado = String(dto.publicado) === 'true';
 
     return this.postsService.create(
@@ -106,7 +105,6 @@ export class PostsController {
     );
   }
 
-  // 📌 UPDATE (AGORA SUPORTA UPLOAD DE IMAGEM!)
   @UseGuards(JwtAuthGuard)
   @Patch(':id')
   @UseInterceptors(
@@ -115,7 +113,7 @@ export class PostsController {
       { name: 'files', maxCount: 10 },
     ], {
       storage: memoryStorage(),
-      limits: { fileSize: 2 * 1024 * 1024 },
+      limits: { fileSize: 5 * 1024 * 1024 },
     }),
   )
   async update(
@@ -129,8 +127,8 @@ export class PostsController {
     @Req() req,
   ) {
     const updateData = { ...dto };
-
     const uploadedFiles = this.getUploadedFiles(files);
+    
     const hasImageUpdate =
       dto.imagemUrl !== undefined ||
       dto.imagemUrls !== undefined ||
@@ -141,8 +139,9 @@ export class PostsController {
       if (dto.imagemUrl) imageUrls.push(dto.imagemUrl);
 
       if (uploadedFiles.length > 0) {
+        // 🔥 Upload para o Blob
         const uploadedImageUrls = await Promise.all(
-          uploadedFiles.map(file => this.saveImage(file)),
+          uploadedFiles.map(file => this.uploadService.uploadFile(file, 'posts')),
         );
         imageUrls = [...imageUrls, ...uploadedImageUrls];
       }
@@ -152,7 +151,6 @@ export class PostsController {
       updateData.imagemUrl = imageUrls[0] || '';
     }
     
-    // Converte string para boolean se vier via FormData
     if (dto.publicado !== undefined) {
       updateData.publicado = String(dto.publicado) === 'true';
     }
@@ -165,7 +163,6 @@ export class PostsController {
     );
   }
 
-  // 📌 DELETE
   @UseGuards(JwtAuthGuard)
   @Delete(':id')
   remove(@Param('id') id: string, @Req() req) {
@@ -185,16 +182,10 @@ export class PostsController {
 
   private normalizeImageUrls(urls?: string[]): string[] {
     if (!urls || !Array.isArray(urls)) return [];
-
-    return Array.from(
-      new Set(
-        urls
-          .map(url => String(url).trim())
-          .filter(Boolean),
-      ),
-    );
+    return Array.from(new Set(urls.map(url => String(url).trim()).filter(Boolean)));
   }
 
+  /* 🔥 LÓGICA ANTIGA DE DISCO COMENTADA
   private async saveImage(file: Express.Multer.File) {
     const uploadPath = path.resolve('uploads');
     if (!fs.existsSync(uploadPath)) fs.mkdirSync(uploadPath);
@@ -207,4 +198,5 @@ export class PostsController {
 
     return `/uploads/${filename}`;
   }
+  */
 }

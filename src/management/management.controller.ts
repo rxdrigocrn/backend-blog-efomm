@@ -4,28 +4,30 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
-import { v4 as uuid } from 'uuid';
-import sharp from 'sharp';
-import * as path from 'path';
-import * as fs from 'fs';
+// import { v4 as uuid } from 'uuid'; // Comentado
+// import sharp from 'sharp'; // Comentado
+// import * as path from 'path'; // Comentado
+// import * as fs from 'fs'; // Comentado
 
 import { ManagementService } from './management.service';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { Role } from '@prisma/client';
+import { UploadService } from '../upload/upload.service'; // 🔥 Injetado
 
 @Controller('management')
 export class ManagementController {
-  constructor(private readonly service: ManagementService) {}
+  constructor(
+    private readonly service: ManagementService,
+    private readonly uploadService: UploadService, // 🔥 Injetado
+  ) {}
 
-  // ✅ Rota Pública para a Landing Page
   @Get()
   findAll() {
     return this.service.findAll();
   }
 
-  // 🔥 Rota Protegida para Criar
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.PRESIDENTE)
@@ -34,7 +36,8 @@ export class ManagementController {
     let photoUrl = body.photoUrl;
 
     if (file) {
-      photoUrl = await this.saveImage(file);
+      // 🔥 Agora usa o Vercel Blob
+      photoUrl = await this.uploadService.uploadFile(file, 'management');
     }
 
     return this.service.create({
@@ -45,7 +48,6 @@ export class ManagementController {
     });
   }
 
-  // 🔥 Rota Protegida para Editar
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.PRESIDENTE)
@@ -56,7 +58,11 @@ export class ManagementController {
     @Body() body: any
   ) {
     let photoUrl = body.photoUrl;
-    if (file) photoUrl = await this.saveImage(file);
+    
+    if (file) {
+      // 🔥 Agora usa o Vercel Blob
+      photoUrl = await this.uploadService.uploadFile(file, 'management');
+    }
 
     const updateData = { ...body };
     if (photoUrl) updateData.photoUrl = photoUrl;
@@ -77,7 +83,7 @@ export class ManagementController {
     return this.service.delete(id);
   }
 
-  // Helper para processar imagem (reutilizando sua lógica de Sharp)
+  /* 🔥 LÓGICA ANTIGA DE DISCO COMENTADA
   private async saveImage(file: Express.Multer.File) {
     const uploadPath = path.resolve('uploads');
     if (!fs.existsSync(uploadPath)) fs.mkdirSync(uploadPath);
@@ -90,6 +96,7 @@ export class ManagementController {
 
     return `/uploads/${filename}`;
   }
+  */
 
   private parseBoolean(value: unknown): boolean {
     if (typeof value === 'boolean') return value;

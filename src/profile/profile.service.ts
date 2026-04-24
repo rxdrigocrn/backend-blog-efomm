@@ -9,137 +9,89 @@ import { UpdateUserDto } from './dto/update-profile.dto';
 export class UserService {
   constructor(private prisma: PrismaService) {}
 
+  /* LÓGICA ANTIGA COMENTADA
   private formatAvatarUrl(user: any) {
     if (!user) return user;
     let newAvatarUrl = user.avatarUrl;
-
     if (newAvatarUrl && !newAvatarUrl.startsWith('http')) {
       const baseUrl = process.env.BACKEND_URL || 'http://localhost:5000/api';
       const cleanBaseUrl = baseUrl.replace(/\/$/, '');
       const cleanPath = newAvatarUrl.startsWith('/') ? newAvatarUrl : `/${newAvatarUrl}`;
       newAvatarUrl = `${cleanBaseUrl}${cleanPath}`;
     }
-
     return { ...user, avatarUrl: newAvatarUrl };
   }
+  */
 
   async create(data: CreateUserDto) {
     const { tagIds, password, ...rest } = data;
     const passwordHash = await bcrypt.hash(password, 10);
 
-    const user = await this.prisma.user.create({
+    return this.prisma.user.create({
       data: {
         ...rest,
         password: passwordHash,
         role: data.role ?? Role.REDATOR,
-        tags: tagIds ? {
-          connect: tagIds.map(id => ({ id }))
-        } : undefined,
+        tags: tagIds ? { connect: tagIds.map(id => ({ id })) } : undefined,
       },
-      select: { // Use select ou include, aqui mantive o select para ser consistente
-        id: true,
-        email: true,
-        nome: true,
-        bio: true,
-        avatarUrl: true,
-        role: true,
-        tags: { select: { id: true, name: true } }, // 🔥 Ajustado para plural
+      select: {
+        id: true, email: true, nome: true, bio: true, avatarUrl: true, role: true,
+        tags: { select: { id: true, name: true } },
       },
     });
-
-    return this.formatAvatarUrl(user);
   }
 
   async findAll() {
-    const users = await this.prisma.user.findMany({
+    return this.prisma.user.findMany({
       select: {
-        id: true,
-        email: true,
-        nome: true,
-        bio: true,
-        avatarUrl: true,
-        role: true,
-        tags: { select: { id: true, name: true } }, // 🔥 Ajustado para plural
+        id: true, email: true, nome: true, bio: true, avatarUrl: true, role: true,
+        tags: { select: { id: true, name: true } },
       },
       orderBy: { nome: 'asc' },
     });
-
-    return users.map(user => this.formatAvatarUrl(user));
   }
 
   async findOne(id: string) {
     const user = await this.prisma.user.findUnique({
       where: { id },
       select: {
-        id: true,
-        email: true,
-        nome: true,
-        bio: true,
-        avatarUrl: true,
-        role: true,
-        tags: { select: { id: true, name: true } }, // 🔥 Ajustado para plural
+        id: true, email: true, nome: true, bio: true, avatarUrl: true, role: true,
+        tags: { select: { id: true, name: true } },
       },
     });
-
     if (!user) throw new NotFoundException('Usuario nao encontrado');
-    return this.formatAvatarUrl(user);
+    return user;
   }
 
   async update(id: string, data: any, currentUserId: string, currentUserRole: Role) {
     await this.findOne(id);
-
     if (currentUserRole !== Role.PRESIDENTE && currentUserId !== id) {
-      throw new ForbiddenException('Sem permissão para editar este usuário');
+      throw new ForbiddenException('Sem permissão');
     }
 
     const { tagIds, password, ...rest } = data;
-
     const updateData: any = { ...rest };
     if (password) updateData.password = await bcrypt.hash(password, 10);
-
-    if (currentUserRole !== Role.PRESIDENTE) {
-      delete updateData.role;
-    }
-
+    if (currentUserRole !== Role.PRESIDENTE) delete updateData.role;
     if (tagIds && currentUserRole === Role.PRESIDENTE) {
-      updateData.tags = {
-        set: tagIds.map(id => ({ id }))
-      };
+      updateData.tags = { set: tagIds.map(id => ({ id })) };
     }
 
-    const updatedUser = await this.prisma.user.update({
+    return this.prisma.user.update({
       where: { id },
       data: updateData,
       select: {
-        id: true,
-        email: true,
-        nome: true,
-        bio: true,
-        avatarUrl: true,
-        role: true,
-        tags: { select: { id: true, name: true } }, // 🔥 Ajustado para plural
+        id: true, email: true, nome: true, bio: true, avatarUrl: true, role: true,
+        tags: { select: { id: true, name: true } },
       },
     });
-
-    return this.formatAvatarUrl(updatedUser);
   }
 
   async delete(id: string) {
     await this.findOne(id);
-
-    const deletedUser = await this.prisma.user.delete({
+    return this.prisma.user.delete({
       where: { id },
-      select: {
-        id: true,
-        email: true,
-        nome: true,
-        bio: true,
-        avatarUrl: true,
-        role: true,
-        tags: { select: { id: true, name: true } }, // 🔥 Ajustado para plural
-      },
+      select: { id: true, email: true, nome: true, role: true },
     });
-
-    return this.formatAvatarUrl(deletedUser);
   }
 }
