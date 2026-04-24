@@ -1,38 +1,38 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import * as express from 'express'; // ⬅️ Importação do Express
-import { join } from 'path';
-import { AppModule } from './app.module';
+import { AppModule } from '../src/app.module';
+
+let cachedApp: any;
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  if (!cachedApp) {
+    const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-  // CORS (frontend)
-  app.enableCors({
-    origin: process.env.FRONTEND_URL || '*',
-  });
+    app.enableCors({
+      origin: process.env.FRONTEND_URL || '*',
+    });
 
-  // Prefixo da API
-  app.setGlobalPrefix('api');
+    app.setGlobalPrefix('api');
 
-  // 🔥 SOLUÇÃO DEFINITIVA PARA O 404:
-  // Usar o express.static garante que o roteador não bloqueie o acesso aos arquivos.
-  // process.cwd() pega a raiz exata do projeto onde a pasta uploads está.
-  app.use('/api/uploads', express.static(join(process.cwd(), 'uploads')));
+    // ⚠️ ATENÇÃO: Na Vercel, servir arquivos estáticos locais ('uploads') 
+    // não funciona para arquivos enviados pelos usuários.
+    // Se forem arquivos fixos do repositório, use o caminho relativo ao projeto.
 
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      transform: true,
-    }),
-  );
+    app.useGlobalPipes(
+      new ValidationPipe({
+        whitelist: true,
+        transform: true,
+      }),
+    );
 
-  const port = process.env.API_PORT || 5000;
-
-  await app.listen(port);
-
-  console.log(`🚀 API running on http://localhost:${port}/api`);
+    await app.init();
+    cachedApp = app.getHttpAdapter().getInstance();
+  }
+  return cachedApp;
 }
 
-bootstrap();
+export default async (req: any, res: any) => {
+  const app = await bootstrap();
+  app(req, res);
+};
