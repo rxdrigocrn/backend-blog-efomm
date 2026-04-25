@@ -19,9 +19,9 @@ import { memoryStorage } from 'multer';
 // import * as path from 'path'; // Comentado
 
 import { UserService } from './profile.service'; 
-import { Roles } from 'src/auth/decorators/roles.decorator';
-import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
-import { RolesGuard } from 'src/auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
 import { Role } from '@prisma/client';
 import { CreateUserDto } from './dto/create-profile.dto';
 import { UpdateUserDto } from './dto/update-profile.dto';
