@@ -10,9 +10,10 @@ import { UserModule } from './profile/profile.module';
 import { ManagementService } from './management/management.service';
 import { ManagementModule } from './management/management.module';
 import { ManagementController } from './management/management.controller';
+import { UploadModule } from './upload/upload.module';
 
 @Module({
-  imports: [AuthModule, PostsModule, PrismaModule, RedatorsModule, TagModule, UserModule, ManagementModule],
+  imports: [AuthModule, PostsModule, PrismaModule, RedatorsModule, TagModule, UserModule, ManagementModule, UploadModule],
   controllers: [AppController, ManagementController],
   providers: [AppService, ManagementService],
 })
