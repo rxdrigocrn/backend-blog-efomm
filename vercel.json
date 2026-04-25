@@ -1,6 +1,8 @@
 {
   "version": 2,
-    "rewrites": [
+  "installCommand": "pnpm install && prisma generate",
+  "buildCommand": "prisma generate && nest build",
+  "rewrites": [
     { "source": "/(.*)", "destination": "/api/main" }
   ],
   "builds": [
