@@ -13,7 +13,7 @@ import { ManagementController } from './management/management.controller';
 import { UploadModule } from './upload/upload.module';
 
 @Module({
-  imports: [AuthModule, PostsModule, PrismaModule, RedatorsModule, TagModule, UserModule, ManagementModule, UploadModule],
+  imports: [UploadModule, AuthModule, PostsModule, PrismaModule, RedatorsModule, TagModule, UserModule, ManagementModule],
   controllers: [AppController, ManagementController],
   providers: [AppService, ManagementService],
 })
