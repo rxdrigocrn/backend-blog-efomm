@@ -6,7 +6,7 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
-    "build": "echo 'RUNNING MIGRATE' && prisma migrate deploy && prisma generate && nest build",
+    "build": "prisma generate && prisma migrate deploy && prisma db seed && nest build",
     "postinstall": "prisma generate",
     "start": "node -r tsconfig-paths/register dist/main.js",
     "start:prod": "node -r tsconfig-paths/register dist/main.js",
