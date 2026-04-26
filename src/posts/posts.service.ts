@@ -14,6 +14,12 @@ export class PostsService {
   // Injetando o Prisma
   constructor(private prisma: PrismaService) {}
 
+  private toPositiveInt(value: unknown, defaultValue: number): number {
+    const parsed = Number(value);
+    if (!Number.isInteger(parsed) || parsed < 1) return defaultValue;
+    return parsed;
+  }
+
   /* LÓGICA ANTIGA COMENTADA
   private formatUrl(url: string | null | undefined): string {
     if (!url || url.startsWith('http')) return url || "";
@@ -43,8 +49,8 @@ export class PostsService {
   */
 
   async findAllPublic(filters: FindPostsDto) {
-    const page = filters.page || 1;
-    const limit = filters.limit || 10;
+    const page = this.toPositiveInt(filters.page, 1);
+    const limit = this.toPositiveInt(filters.limit, 10);
     const skip = (page - 1) * limit;
     const where: any = { publicado: true };
 
@@ -86,8 +92,8 @@ export class PostsService {
   }
 
   async findAll(filters: FindPostsDto, userId: string, role: Role) {
-    const page = filters.page || 1;
-    const limit = filters.limit || 10;
+    const page = this.toPositiveInt(filters.page, 1);
+    const limit = this.toPositiveInt(filters.limit, 10);
     const skip = (page - 1) * limit;
     const where: any = {};
 

@@ -7,9 +7,10 @@ export class FindPostsDto {
   @IsString()
   search?: string;
 
-  @IsOptional()
-  @IsBoolean()
-  publicado?: boolean;
+@IsOptional()
+@Type(() => Boolean)
+@IsBoolean()
+publicado?: boolean;
 
   @IsOptional()
   @Type(() => Number)
