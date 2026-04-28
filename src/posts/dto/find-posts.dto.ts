@@ -1,5 +1,5 @@
 import { IsOptional, IsString, IsBoolean, IsInt, Min, IsArray } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 
 export class FindPostsDto {
   @IsOptional()
@@ -12,6 +12,11 @@ export class FindPostsDto {
   publicado?: boolean; // Filtro por status de publicação
 
   @IsOptional()
+  @Transform(({ value }) => {
+    if (!value) return undefined;
+    // Converte valor único em array, ou mantém array como está
+    return Array.isArray(value) ? value : [value];
+  })
   @IsArray()
   @Type(() => String)
   @IsString({ each: true })
