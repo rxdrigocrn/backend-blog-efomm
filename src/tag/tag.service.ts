@@ -24,7 +24,7 @@ export class TagService {
     return tag;
   }
 
-  findAll() {
+  public findAll() {
     return this.prisma.tag.findMany({
       orderBy: { createdAt: 'desc' },
     });
