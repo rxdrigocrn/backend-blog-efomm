@@ -5,11 +5,11 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Role } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
-@UseGuards(JwtAuthGuard, RolesGuard) // 🔥 A ORDEM IMPORTA: JWT primeiro, depois Roles
 @Controller('tags')
 export class TagController {
   constructor(private readonly service: TagService) {}
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Post()
   @Roles(Role.PRESIDENTE)
   create(@Body() body: { name: string }, @Req() req) {
@@ -21,12 +21,14 @@ export class TagController {
     return this.service.findAll(); // pode deixar aberto
   }
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Patch(':id')
   @Roles(Role.PRESIDENTE)
   update(@Param('id') id: string, @Body() body: { name?: string }, @Req() req) {
     return this.service.update(id, body, req.user);
   }
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Delete(':id')
   @Roles(Role.PRESIDENTE)
   delete(@Param('id') id: string, @Req() req) {
