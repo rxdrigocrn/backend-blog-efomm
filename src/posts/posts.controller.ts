@@ -102,6 +102,7 @@ export class PostsController {
         publicado: isPublicado,
       },
       req.user.userId,
+      req.user,
     );
   }
 
@@ -160,6 +161,7 @@ export class PostsController {
       updateData,
       req.user.userId,
       req.user.role,
+      req.user,
     );
   }
 
@@ -170,6 +172,7 @@ export class PostsController {
       id,
       req.user.userId,
       req.user.role,
+      req.user,
     );
   }
 

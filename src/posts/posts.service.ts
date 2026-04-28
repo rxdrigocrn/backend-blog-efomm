@@ -7,12 +7,16 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { CreatePostDto, UpdatePostDto } from './dto/create-post.dto';
 import { Role } from '@prisma/client';
 import { FindPostsDto } from './dto/find-posts.dto';
+import { AuditLogService } from '../audit-log/audit-log.service';
  
 
 @Injectable()
 export class PostsService {
   // Injetando o Prisma
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private auditLogService: AuditLogService,
+  ) {}
 
   private toPositiveInt(value: unknown, defaultValue: number): number {
     const parsed = Number(value);
@@ -58,6 +62,14 @@ export class PostsService {
       where.titulo = { contains: filters.search, mode: 'insensitive' };
     }
 
+    if (filters.tagIds && filters.tagIds.length > 0) {
+      where.tags = {
+        some: {
+          id: { in: filters.tagIds },
+        },
+      };
+    }
+
     const [posts, total] = await this.prisma.$transaction([
       this.prisma.post.findMany({
         where, skip, take: limit,
@@ -100,6 +112,13 @@ export class PostsService {
     if (role !== Role.PRESIDENTE) where.autorId = userId;
     if (filters.search) where.titulo = { contains: filters.search, mode: 'insensitive' };
     if (filters.publicado !== undefined) where.publicado = String(filters.publicado) === 'true';
+    if (filters.tagIds && filters.tagIds.length > 0) {
+      where.tags = {
+        some: {
+          id: { in: filters.tagIds },
+        },
+      };
+    }
 
     const [posts, total] = await this.prisma.$transaction([
       this.prisma.post.findMany({
@@ -119,7 +138,7 @@ export class PostsService {
     };
   }
 
-  async create(createPostDto: CreatePostDto, userId: string) {
+  async create(createPostDto: CreatePostDto, userId: string, actor: any) {
     const slug = createPostDto.titulo.toLowerCase().replace(/ /g, '-');
     const imageUrls = this.resolveImageUrls(createPostDto);
     const tagIds = this.resolveTagIds(createPostDto.tagIds ?? createPostDto.tags);
@@ -141,10 +160,24 @@ export class PostsService {
       },
     });
 
+    void this.auditLogService.record({
+      actor,
+      action: 'CREATE',
+      entityType: 'post',
+      entityId: post.id,
+      summary: `Criou post: ${post.titulo}`,
+      metadata: {
+        titulo: post.titulo,
+        publicado: post.publicado,
+        tagIds,
+        imagemCount: imageUrls.length,
+      },
+    }).catch(() => undefined);
+
     return post;
   }
 
-  async update(id: string, dto: UpdatePostDto, userId: string, role: Role) {
+  async update(id: string, dto: UpdatePostDto, userId: string, role: Role, actor: any) {
     const postExists = await this.prisma.post.findUnique({ where: { id } });
     if (!postExists) throw new NotFoundException('Post não encontrado');
     if (postExists.autorId !== userId && role !== Role.PRESIDENTE) throw new ForbiddenException('Sem permissão');
@@ -161,7 +194,7 @@ export class PostsService {
       dataToUpdate.tags = { set: tagIds.map(id => ({ id })) };
     }
 
-    return this.prisma.post.update({
+    const post = await this.prisma.post.update({
       where: { id },
       data: dataToUpdate,
       include: {
@@ -169,13 +202,42 @@ export class PostsService {
         autor: { select: { nome: true, avatarUrl: true } },
       },
     });
+
+    void this.auditLogService.record({
+      actor,
+      action: 'UPDATE',
+      entityType: 'post',
+      entityId: post.id,
+      summary: `Atualizou post: ${post.titulo}`,
+      metadata: {
+        titulo: post.titulo,
+        publicado: post.publicado,
+        tagCount: Array.isArray(post.tags) ? post.tags.length : 0,
+      },
+    }).catch(() => undefined);
+
+    return post;
   }
 
-  async remove(id: string, userId: string, role: Role) {
+  async remove(id: string, userId: string, role: Role, actor: any) {
     const post = await this.prisma.post.findUnique({ where: { id } });
     if (!post) throw new NotFoundException('Post não encontrado');
     if (post.autorId !== userId && role !== Role.PRESIDENTE) throw new ForbiddenException('Sem permissão');
-    return this.prisma.post.delete({ where: { id } });
+    const deletedPost = await this.prisma.post.delete({ where: { id } });
+
+    void this.auditLogService.record({
+      actor,
+      action: 'DELETE',
+      entityType: 'post',
+      entityId: deletedPost.id,
+      summary: `Removeu post: ${deletedPost.titulo}`,
+      metadata: {
+        titulo: deletedPost.titulo,
+        publicado: deletedPost.publicado,
+      },
+    }).catch(() => undefined);
+
+    return deletedPost;
   }
 
   private resolveImageUrls(dto: CreatePostDto | UpdatePostDto): string[] {

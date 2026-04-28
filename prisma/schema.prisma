@@ -32,6 +32,7 @@ model User {
   bio       String?
   avatarUrl String?
   role      Role     @default(REDATOR)
+  auditLogs  AuditLog[]
     tags      Tag[]    
   posts     Post[]
 }
@@ -51,6 +52,21 @@ model Post {
   autorId   String
   autor     User     @relation(fields: [autorId], references: [id])
   tags      Tag[]
+  likes     PostLike[]
+}
+
+model PostLike {
+  id        String   @id @default(uuid())
+  postId    String
+  userId    String?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@unique([postId, ip])
+  @@index([postId])
 }
 
 model Management {
@@ -64,4 +80,23 @@ model Management {
   isSobre Boolean @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  actorId    String?
+  actorEmail String
+  actorRole  Role
+  action     String
+  entityType String
+  entityId   String?
+  summary    String
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([entityType])
+  @@index([action])
 }

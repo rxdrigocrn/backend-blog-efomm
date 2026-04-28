@@ -4,10 +4,14 @@ import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-profile.dto';
 import { UpdateUserDto } from './dto/update-profile.dto';
+import { AuditLogService } from '../audit-log/audit-log.service';
 
 @Injectable()
 export class UserService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private auditLogService: AuditLogService,
+  ) {}
 
   /* LÓGICA ANTIGA COMENTADA
   private formatAvatarUrl(user: any) {
@@ -23,11 +27,11 @@ export class UserService {
   }
   */
 
-  async create(data: CreateUserDto) {
+  async create(data: CreateUserDto, actor: any) {
     const { tagIds, password, ...rest } = data;
     const passwordHash = await bcrypt.hash(password, 10);
 
-    return this.prisma.user.create({
+    const user = await this.prisma.user.create({
       data: {
         ...rest,
         password: passwordHash,
@@ -39,6 +43,22 @@ export class UserService {
         tags: { select: { id: true, name: true } },
       },
     });
+
+    void this.auditLogService.record({
+      actor,
+      action: 'CREATE',
+      entityType: 'user',
+      entityId: user.id,
+      summary: `Criou usuário: ${user.nome}`,
+      metadata: {
+        email: user.email,
+        nome: user.nome,
+        role: user.role,
+        tagCount: user.tags?.length ?? 0,
+      },
+    }).catch(() => undefined);
+
+    return user;
   }
 
   async findAll() {
@@ -63,7 +83,7 @@ export class UserService {
     return user;
   }
 
-  async update(id: string, data: any, currentUserId: string, currentUserRole: Role) {
+  async update(id: string, data: any, currentUserId: string, currentUserRole: Role, actor: any) {
     await this.findOne(id);
     if (currentUserRole !== Role.PRESIDENTE && currentUserId !== id) {
       throw new ForbiddenException('Sem permissão');
@@ -77,7 +97,7 @@ export class UserService {
       updateData.tags = { set: tagIds.map(id => ({ id })) };
     }
 
-    return this.prisma.user.update({
+    const user = await this.prisma.user.update({
       where: { id },
       data: updateData,
       select: {
@@ -85,13 +105,44 @@ export class UserService {
         tags: { select: { id: true, name: true } },
       },
     });
+
+    void this.auditLogService.record({
+      actor,
+      action: 'UPDATE',
+      entityType: 'user',
+      entityId: user.id,
+      summary: `Atualizou usuário: ${user.nome}`,
+      metadata: {
+        email: user.email,
+        nome: user.nome,
+        role: user.role,
+        tagCount: user.tags?.length ?? 0,
+      },
+    }).catch(() => undefined);
+
+    return user;
   }
 
-  async delete(id: string) {
+  async delete(id: string, actor: any) {
     await this.findOne(id);
-    return this.prisma.user.delete({
+    const user = await this.prisma.user.delete({
       where: { id },
       select: { id: true, email: true, nome: true, role: true },
     });
+
+    void this.auditLogService.record({
+      actor,
+      action: 'DELETE',
+      entityType: 'user',
+      entityId: user.id,
+      summary: `Removeu usuário: ${user.nome}`,
+      metadata: {
+        email: user.email,
+        nome: user.nome,
+        role: user.role,
+      },
+    }).catch(() => undefined);
+
+    return user;
   }
 }

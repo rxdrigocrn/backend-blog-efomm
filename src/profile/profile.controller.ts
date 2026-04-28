@@ -45,7 +45,8 @@ export class UserController {
   )
   async create(
     @UploadedFile() file: Express.Multer.File,
-    @Body() body: CreateUserDto
+    @Body() body: CreateUserDto,
+    @Req() req,
   ) {
     let avatarUrl = body.avatarUrl;
 
@@ -54,7 +55,7 @@ export class UserController {
       avatarUrl = await this.uploadService.uploadFile(file, 'avatars');
     }
 
-    return this.service.create({ ...body, avatarUrl });
+    return this.service.create({ ...body, avatarUrl }, req.user);
   }
 
   @Get()
@@ -91,14 +92,14 @@ export class UserController {
     const updateData = { ...body };
     if (avatarUrl) updateData.avatarUrl = avatarUrl;
 
-    return this.service.update(id, updateData, req.user.userId, req.user.role);
+    return this.service.update(id, updateData, req.user.userId, req.user.role, req.user);
   }
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.PRESIDENTE)
-  delete(@Param('id') id: string) {
-    return this.service.delete(id);
+  delete(@Param('id') id: string, @Req() req) {
+    return this.service.delete(id, req.user);
   }
 
   /* 🔥 LÓGICA ANTIGA DE DISCO COMENTADA

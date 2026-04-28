@@ -7,16 +7,17 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Query } from '@nestjs/common';
+import { Role } from '@prisma/client';
 
 @Controller('redatores')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('PRESIDENTE')
+@Roles(Role.PRESIDENTE)
 export class RedatoresController {
   constructor(private redatoresService: RedatoresService) {}
 
   @Post()
   create(@Body() dto: CreateUserDto, @Req() req) {
-    return this.redatoresService.create(dto, req.user.role);
+    return this.redatoresService.create(dto, req.user.role, req.user);
   }
 
  @Get()
@@ -30,12 +31,12 @@ findAll(@Query('search') search: string, @Req() req) {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateRedatorDto) {
-    return this.redatoresService.update(id, dto);
+  update(@Param('id') id: string, @Body() dto: UpdateRedatorDto, @Req() req) {
+    return this.redatoresService.update(id, dto, req.user);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.redatoresService.remove(id);
+  remove(@Param('id') id: string, @Req() req) {
+    return this.redatoresService.remove(id, req.user);
   }
 }

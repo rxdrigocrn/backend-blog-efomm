@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards, Req } from '@nestjs/common';
 import { TagService } from './tag.service';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -12,8 +12,8 @@ export class TagController {
 
   @Post()
   @Roles(Role.PRESIDENTE)
-  create(@Body() body: { name: string }) {
-    return this.service.create(body);
+  create(@Body() body: { name: string }, @Req() req) {
+    return this.service.create(body, req.user);
   }
 
   @Get()
@@ -23,13 +23,13 @@ export class TagController {
 
   @Patch(':id')
   @Roles(Role.PRESIDENTE)
-  update(@Param('id') id: string, @Body() body: { name?: string }) {
-    return this.service.update(id, body);
+  update(@Param('id') id: string, @Body() body: { name?: string }, @Req() req) {
+    return this.service.update(id, body, req.user);
   }
 
   @Delete(':id')
   @Roles(Role.PRESIDENTE)
-  delete(@Param('id') id: string) {
-    return this.service.delete(id);
+  delete(@Param('id') id: string, @Req() req) {
+    return this.service.delete(id, req.user);
   }
 }

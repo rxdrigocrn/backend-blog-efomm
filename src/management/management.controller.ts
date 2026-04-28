@@ -1,6 +1,6 @@
 import { 
   Controller, Get, Post, Patch, Delete, Body, Param, 
-  UseGuards, UseInterceptors, UploadedFile 
+  UseGuards, UseInterceptors, UploadedFile, Req, Query
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
@@ -28,11 +28,22 @@ export class ManagementController {
     return this.service.findAll();
   }
 
+  @Get('logs')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.PRESIDENTE)
+  getLogs(
+    @Query('entityType') entityType?: string,
+    @Query('action') action?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.service.findLogs({ entityType, action, limit });
+  }
+
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.PRESIDENTE)
   @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
-  async create(@UploadedFile() file: Express.Multer.File, @Body() body: any) {
+  async create(@UploadedFile() file: Express.Multer.File, @Body() body: any, @Req() req) {
     let photoUrl = body.photoUrl;
 
     if (file) {
@@ -45,7 +56,7 @@ export class ManagementController {
       photoUrl,
       isManagement: this.parseBoolean(body.isManagement),
       isSobre: this.parseBoolean(body.isSobre),
-    });
+    }, req.user);
   }
 
   @Patch(':id')
@@ -55,7 +66,8 @@ export class ManagementController {
   async update(
     @Param('id') id: string,
     @UploadedFile() file: Express.Multer.File,
-    @Body() body: any
+    @Body() body: any,
+    @Req() req,
   ) {
     let photoUrl = body.photoUrl;
     
@@ -73,14 +85,14 @@ export class ManagementController {
       updateData.isSobre = this.parseBoolean(body.isSobre);
     }
 
-    return this.service.update(id, updateData);
+    return this.service.update(id, updateData, req.user);
   }
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.PRESIDENTE)
-  delete(@Param('id') id: string) {
-    return this.service.delete(id);
+  delete(@Param('id') id: string, @Req() req) {
+    return this.service.delete(id, req.user);
   }
 
   /* 🔥 LÓGICA ANTIGA DE DISCO COMENTADA

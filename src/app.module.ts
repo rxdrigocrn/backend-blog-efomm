@@ -11,9 +11,10 @@ import { ManagementService } from './management/management.service';
 import { ManagementModule } from './management/management.module';
 import { ManagementController } from './management/management.controller';
 import { UploadModule } from './upload/upload.module';
+import { AuditLogModule } from './audit-log/audit-log.module';
 
 @Module({
-  imports: [UploadModule, AuthModule, PostsModule, PrismaModule, RedatorsModule, TagModule, UserModule, ManagementModule],
+  imports: [UploadModule, AuthModule, PostsModule, PrismaModule, RedatorsModule, TagModule, UserModule, ManagementModule, AuditLogModule],
   controllers: [AppController, ManagementController],
   providers: [AppService, ManagementService],
 })
