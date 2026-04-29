@@ -21,7 +21,8 @@ import { memoryStorage } from 'multer';
 // import * as path from 'path'; // Comentado
 
 import { PostsService } from './posts.service';
-import { CreatePostDto, UpdatePostDto } from './dto/create-post.dto';
+import { CreatePostDto } from './dto/create-post.dto';
+import { UpdatePostDto } from './dto/update-post.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { FindPostsDto } from './dto/find-posts.dto';
 import { UploadService } from '../upload/upload.service'; // 🔥 Importe seu novo service

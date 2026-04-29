@@ -4,7 +4,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { CreatePostDto, UpdatePostDto } from './dto/create-post.dto';
+import { CreatePostDto } from './dto/create-post.dto';
+import { UpdatePostDto } from './dto/update-post.dto';
 import { Role } from '@prisma/client';
 import { FindPostsDto } from './dto/find-posts.dto';
 import { AuditLogService } from '../audit-log/audit-log.service';
@@ -182,16 +183,31 @@ export class PostsService {
     if (!postExists) throw new NotFoundException('Post não encontrado');
     if (postExists.autorId !== userId && role !== Role.PRESIDENTE) throw new ForbiddenException('Sem permissão');
 
-    const dataToUpdate: any = { ...dto };
-    if (dto.imagemUrl !== undefined || dto.imagemUrls !== undefined) {
+    const {
+      tagIds,
+      tags,
+      imagemUrl,
+      imagemUrls,
+      publicado,
+      ...rest
+    } = dto as UpdatePostDto & {
+      tagIds?: string[];
+      tags?: string[];
+      imagemUrl?: string;
+      imagemUrls?: string[];
+      publicado?: boolean;
+    };
+
+    const dataToUpdate: any = { ...rest };
+    if (imagemUrl !== undefined || imagemUrls !== undefined) {
       const imageUrls = this.resolveImageUrls(dto);
       dataToUpdate.imagemUrls = imageUrls;
       dataToUpdate.imagemUrl = imageUrls[0] || '';
     }
 
-    if (dto.tagIds !== undefined || dto.tags !== undefined) {
-      const tagIds = this.resolveTagIds(dto.tagIds ?? dto.tags);
-      dataToUpdate.tags = { set: tagIds.map(id => ({ id })) };
+    if (tagIds !== undefined || tags !== undefined) {
+      const resolvedTagIds = this.resolveTagIds(tagIds ?? tags);
+      dataToUpdate.tags = { set: resolvedTagIds.map(id => ({ id })) };
     }
 
     const post = await this.prisma.post.update({

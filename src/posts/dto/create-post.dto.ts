@@ -139,5 +139,3 @@ export class CreatePostDto {
   @IsBoolean()
   publicado?: boolean;
 }
-
-export class UpdatePostDto extends CreatePostDto {}
