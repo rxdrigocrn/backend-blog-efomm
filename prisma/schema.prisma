@@ -31,6 +31,7 @@ model User {
   password  String
   bio       String?
   avatarUrl String?
+  active    Boolean  @default(true)
   role      Role     @default(REDATOR)
   auditLogs  AuditLog[]
     tags      Tag[]    
@@ -75,6 +76,7 @@ model Management {
   cargo       String
   descricao   String? 
   photoUrl    String?
+  active      Boolean  @default(true)
   order       Int      @default(0) 
   isManagement Boolean @default(false)
   isSobre Boolean @default(false)

@@ -74,21 +74,25 @@ export class ManagementService {
   }
 
   async delete(id: string, actor: any) {
-    const management = await this.prisma.management.delete({ where: { id } });
+    try {
+      const management = await this.prisma.management.update({ where: { id }, data: { active: false } });
 
-    void this.auditLogService.record({
-      actor,
-      action: 'DELETE',
-      entityType: 'management',
-      entityId: management.id,
-      summary: `Removeu membro de management: ${management.nome}`,
-      metadata: {
-        nome: management.nome,
-        cargo: management.cargo,
-      },
-    }).catch(() => undefined);
+      void this.auditLogService.record({
+        actor,
+        action: 'DELETE',
+        entityType: 'management',
+        entityId: management.id,
+        summary: `Inativou membro de management: ${management.nome}`,
+        metadata: {
+          nome: management.nome,
+          cargo: management.cargo,
+        },
+      }).catch(() => undefined);
 
-    return management;
+      return management;
+    } catch {
+      throw new NotFoundException('Membro não encontrado');
+    }
   }
 
   findLogs(filters: { entityType?: string; action?: string; limit?: string }) {

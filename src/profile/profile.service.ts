@@ -125,8 +125,9 @@ export class UserService {
 
   async delete(id: string, actor: any) {
     await this.findOne(id);
-    const user = await this.prisma.user.delete({
+    const user = await this.prisma.user.update({
       where: { id },
+      data: { active: false },
       select: { id: true, email: true, nome: true, role: true },
     });
 
@@ -135,7 +136,7 @@ export class UserService {
       action: 'DELETE',
       entityType: 'user',
       entityId: user.id,
-      summary: `Removeu usuário: ${user.nome}`,
+      summary: `Inativou usuário: ${user.nome}`,
       metadata: {
         email: user.email,
         nome: user.nome,
