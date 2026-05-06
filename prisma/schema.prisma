@@ -62,6 +62,7 @@ model PostLike {
 }
 
 model Management {
+<<<<<<< HEAD
   id           String   @id @default(uuid())
   nome         String
   cargo        String
@@ -73,6 +74,19 @@ model Management {
   isManagement Boolean  @default(false)
   isSobre      Boolean  @default(false)
   active       Boolean  @default(true)
+=======
+  id          String   @id @default(uuid())
+  nome        String
+  cargo       String
+  descricao   String? 
+  photoUrl    String?
+  active      Boolean  @default(true)
+  order       Int      @default(0) 
+  isManagement Boolean @default(false)
+  isSobre Boolean @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+>>>>>>> 741ed854981c1640ab24a4a706ec5a097e0d06e2
 }
 
 model AuditLog {
