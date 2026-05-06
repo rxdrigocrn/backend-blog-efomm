@@ -15,7 +15,7 @@
         where: { email },
       });
 
-      if (!user || !user.isActive) {
+      if (!user || !user.active) {
         throw new UnauthorizedException('Credenciais inválidas');
       }
 

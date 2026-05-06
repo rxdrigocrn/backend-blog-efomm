@@ -39,7 +39,7 @@ export class UserService {
         tags: tagIds ? { connect: tagIds.map(id => ({ id })) } : undefined,
       },
       select: {
-        id: true, email: true, nome: true, bio: true, avatarUrl: true, role: true, isActive: true,
+        id: true, email: true, nome: true, bio: true, avatarUrl: true, role: true, active: true,
         tags: { select: { id: true, name: true } },
       },
     });
@@ -63,9 +63,9 @@ export class UserService {
 
   async findAll() {
     return this.prisma.user.findMany({
-      where: { isActive: true },
+      where: { active: true },
       select: {
-        id: true, email: true, nome: true, bio: true, avatarUrl: true, role: true, isActive: true,
+        id: true, email: true, nome: true, bio: true, avatarUrl: true, role: true, active: true,
         tags: { select: { id: true, name: true } },
       },
       orderBy: { nome: 'asc' },
@@ -74,9 +74,9 @@ export class UserService {
 
   async findOne(id: string) {
     const user = await this.prisma.user.findFirst({
-      where: { id, isActive: true },
+      where: { id, active: true },
       select: {
-        id: true, email: true, nome: true, bio: true, avatarUrl: true, role: true, isActive: true,
+        id: true, email: true, nome: true, bio: true, avatarUrl: true, role: true, active: true,
         tags: { select: { id: true, name: true } },
       },
     });
@@ -102,7 +102,7 @@ export class UserService {
       where: { id },
       data: updateData,
       select: {
-        id: true, email: true, nome: true, bio: true, avatarUrl: true, role: true, isActive: true,
+        id: true, email: true, nome: true, bio: true, avatarUrl: true, role: true, active: true,
         tags: { select: { id: true, name: true } },
       },
     });
@@ -128,7 +128,7 @@ export class UserService {
     await this.findOne(id);
     const user = await this.prisma.user.update({
       where: { id },
-      data: { isActive: false },
+      data: { active: false },
       select: { id: true, email: true, nome: true, role: true },
     });
 
