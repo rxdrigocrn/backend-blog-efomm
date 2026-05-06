@@ -39,7 +39,7 @@ export class UserService {
         tags: tagIds ? { connect: tagIds.map(id => ({ id })) } : undefined,
       },
       select: {
-        id: true, email: true, nome: true, bio: true, avatarUrl: true, role: true,
+        id: true, email: true, nome: true, bio: true, avatarUrl: true, role: true, isActive: true,
         tags: { select: { id: true, name: true } },
       },
     });
@@ -63,8 +63,9 @@ export class UserService {
 
   async findAll() {
     return this.prisma.user.findMany({
+      where: { isActive: true },
       select: {
-        id: true, email: true, nome: true, bio: true, avatarUrl: true, role: true,
+        id: true, email: true, nome: true, bio: true, avatarUrl: true, role: true, isActive: true,
         tags: { select: { id: true, name: true } },
       },
       orderBy: { nome: 'asc' },
@@ -72,10 +73,10 @@ export class UserService {
   }
 
   async findOne(id: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { id },
+    const user = await this.prisma.user.findFirst({
+      where: { id, isActive: true },
       select: {
-        id: true, email: true, nome: true, bio: true, avatarUrl: true, role: true,
+        id: true, email: true, nome: true, bio: true, avatarUrl: true, role: true, isActive: true,
         tags: { select: { id: true, name: true } },
       },
     });
@@ -101,7 +102,7 @@ export class UserService {
       where: { id },
       data: updateData,
       select: {
-        id: true, email: true, nome: true, bio: true, avatarUrl: true, role: true,
+        id: true, email: true, nome: true, bio: true, avatarUrl: true, role: true, isActive: true,
         tags: { select: { id: true, name: true } },
       },
     });
@@ -125,8 +126,9 @@ export class UserService {
 
   async delete(id: string, actor: any) {
     await this.findOne(id);
-    const user = await this.prisma.user.delete({
+    const user = await this.prisma.user.update({
       where: { id },
+      data: { isActive: false },
       select: { id: true, email: true, nome: true, role: true },
     });
 
@@ -135,7 +137,7 @@ export class UserService {
       action: 'DELETE',
       entityType: 'user',
       entityId: user.id,
-      summary: `Removeu usuário: ${user.nome}`,
+      summary: `Inativou usuário: ${user.nome}`,
       metadata: {
         email: user.email,
         nome: user.nome,

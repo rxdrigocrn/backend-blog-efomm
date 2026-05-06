@@ -1,6 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
-  output   = "../node_modules/.prisma/client"
+  provider      = "prisma-client-js"
+  output        = "../node_modules/.prisma/client"
   binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
@@ -9,50 +9,43 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Role {
-  PRESIDENTE
-  REDATOR
-}
-
 model Tag {
   id        String   @id @default(uuid())
   name      String   @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  users     User[]
-  posts     Post[]
+  posts     Post[]   @relation("PostToTag")
+  users     User[]   @relation("TagToUser")
 }
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
+  id        String     @id @default(uuid())
+  email     String     @unique
   nome      String
   password  String
   bio       String?
   avatarUrl String?
-  role      Role     @default(REDATOR)
-  auditLogs  AuditLog[]
-    tags      Tag[]    
+  role      Role       @default(REDATOR)
+  active    Boolean    @default(true)
+  auditLogs AuditLog[]
   posts     Post[]
+  tags      Tag[]      @relation("TagToUser")
 }
 
- 
 model Post {
-  id        String   @id @default(uuid())
-  titulo    String
-  slug      String   @unique
-  conteudo  String   @db.Text
-  imagemUrl String
-  imagemUrls String[] @default([])
-  publicado Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
-  autorId   String
-  autor     User     @relation(fields: [autorId], references: [id])
-  tags      Tag[]
-  likes     PostLike[]
+  id         String     @id @default(uuid())
+  titulo     String
+  slug       String     @unique
+  conteudo   String
+  imagemUrl  String
+  publicado  Boolean    @default(false)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  autorId    String
+  imagemUrls String[]   @default([])
+  autor      User       @relation(fields: [autorId], references: [id])
+  likes      PostLike[]
+  tags       Tag[]      @relation("PostToTag")
 }
 
 model PostLike {
@@ -61,8 +54,7 @@ model PostLike {
   userId    String?
   ip        String?
   createdAt DateTime @default(now())
-
-  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
 
   @@unique([postId, userId])
   @@unique([postId, ip])
@@ -70,16 +62,17 @@ model PostLike {
 }
 
 model Management {
-  id          String   @id @default(uuid())
-  nome        String
-  cargo       String
-  descricao   String? 
-  photoUrl    String?
-  order       Int      @default(0) 
-  isManagement Boolean @default(false)
-  isSobre Boolean @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String   @id @default(uuid())
+  nome         String
+  cargo        String
+  descricao    String?
+  photoUrl     String?
+  order        Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  isManagement Boolean  @default(false)
+  isSobre      Boolean  @default(false)
+  active       Boolean  @default(true)
 }
 
 model AuditLog {
@@ -93,10 +86,14 @@ model AuditLog {
   summary    String
   metadata   Json?
   createdAt  DateTime @default(now())
-
-  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  actor      User?    @relation(fields: [actorId], references: [id])
 
   @@index([createdAt])
   @@index([entityType])
   @@index([action])
+}
+
+enum Role {
+  PRESIDENTE
+  REDATOR
 }

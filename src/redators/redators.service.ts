@@ -29,6 +29,7 @@ async create(data: CreateUserDto, currentUserRole: Role, actor: any) {
       bio: data.bio,
       avatarUrl: data.avatarUrl,
       role: data.role || Role.REDATOR, // default
+      isActive: true,
     },
   });
 
@@ -51,6 +52,7 @@ async create(data: CreateUserDto, currentUserRole: Role, actor: any) {
 async findAll(search: string | undefined, currentUserId: string) {
   return this.prisma.user.findMany({
     where: {
+      isActive: true,
       id: {
         not: currentUserId, // 🔥 exclui o próprio usuário
       },
@@ -76,6 +78,7 @@ async findAll(search: string | undefined, currentUserId: string) {
     return this.prisma.user.findFirst({
       where: {
         id,
+        isActive: true,
         role: 'REDATOR',
       },
     })
@@ -108,8 +111,9 @@ async findAll(search: string | undefined, currentUserId: string) {
   }
 
   async remove(id: string, actor: any) {
-    const user = await this.prisma.user.delete({
+    const user = await this.prisma.user.update({
       where: { id },
+      data: { isActive: false },
     })
 
     void this.auditLogService.record({
@@ -117,7 +121,7 @@ async findAll(search: string | undefined, currentUserId: string) {
       action: 'DELETE',
       entityType: 'user',
       entityId: user.id,
-      summary: `Removeu redator: ${user.nome}`,
+      summary: `Inativou redator: ${user.nome}`,
       metadata: {
         email: user.email,
         nome: user.nome,

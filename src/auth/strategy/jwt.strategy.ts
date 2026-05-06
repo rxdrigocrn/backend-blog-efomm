@@ -1,10 +1,11 @@
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PassportStrategy } from '@nestjs/passport';
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor() {
+  constructor(private prisma: PrismaService) {
     super({
       // Pega o token do Header "Authorization: Bearer <token>"
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
@@ -15,6 +16,22 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
   // O que este método retorna será anexado ao objeto "req.user"
   async validate(payload: any) {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        id: payload.sub,
+        isActive: true,
+      },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+      },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('Usuario inativo');
+    }
+
     return {
       userId: payload.sub,
       email: payload.email,
